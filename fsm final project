@@ -1,0 +1,368 @@
+
+library IEEE;
+use IEEE.STD_LOGIC_1164.ALL;
+
+
+entity term_coffeemachine_mod is
+port (in_50won,in_100won,in_500won : in std_logic ;--동전 입력 신호
+button_coffee			  : in std_logic ; --커피 구매 버튼 
+button_tea			: in std_logic ; --tea 구매 버튼
+clk 				  : in std_logic ; --클락 신호
+button_return_money	 : in std_logic ;--동전 반환 버튼 (현재 남은 돈 반환)
+button_reset			  : in std_logic ;-- 리셋 버튼( 모든 돈 리셋)
+coffee_out            : out std_logic;-- 커피 출력 ( 커피 캔) 
+tea_out            : out std_logic;-- tea 출력 ( tea 캔) 
+nomoney	  : out std_logic;-- 커피나 티를 눌렀으나 돈이 부족한 경우, nomoney 출력
+coin_out_50,coin_out_100,coin_out_500 : out std_logic--반환된 동전 출력 신호
+				  			  
+				);
+end term_coffeemachine_mod;
+
+architecture Behavioral of term_coffeemachine_mod is
+	
+type money_state is (m0,m50,m100,m150,m200,m250,m300,m350,m400,
+							  m450,m500,m550,m600,m650,m700,m750); -- 자판기의 state를 현재 돈의 액수에 따라 분류 
+	signal m : money_state;
+	begin	
+      
+		process(in_50won,in_100won,in_500won,clk,button_reset,button_coffee,button_tea)	-- 프로세스1 : 자판기기의 state를 현재의 돈에 따라 구분하고, case문을 이용해 각 상태의 동작에 대한 프로세스 나타냄.
+		 begin 
+		if(button_reset='1') then
+	 m <= m0;
+	coin_out_50 <='0';coin_out_100 <='0';coin_out_500 <='0';coffee_out <= '0';
+tea_out<=‘0’;
+			elsif (clk 'event and clk ='1') then 					-- 각각의 상태에서 들어오는 입력에 따른 동작 상태  
+		case m is                     
+		when m0 => --자판기 상태 0원일 때
+	 coffee_out <= '0';tea_out <=‘0’;	 		
+--모든 상태에서 아무런 입력 신호가 없을경우 아무 출력도 내지 않음 (coffee,tea,nomoney)
+		nomoney <='0';
+ if(button_return_money='0' and button_coffee='0' and button_tea=‘0’) then
+		if(in_50won ='1')    then
+			m <= m50; coin_out_50 <='0';						--50원을 넣었을 때의 동작  (state 이동/출력신호에 대한 명시)
+			elsif(in_100won ='1')then	
+			m <= m100; coin_out_100 <='0';						--100원을 넣었을 때 동작  (state 이동/출력신호에 대한 명시
+		elsif(in_500won ='1')then
+		m <= m500; coin_out_500 <='0';						--500원을 넣었을 때 동작  (state 이동/출력신호에 대한 명시 
+		else 	
+		m <= m0;	coin_out_50 <='0';coin_out_100 <='0';coin_out_500 <='0';	--아무 입력이 없으면 현재 상태를 그대로 유지 (되돌아 옴)
+						end if;
+	elsif(button_return_money='0' and button_coffee='1'and button_tea =‘0’) then	--커피를 누르는 신호가 입력됐지만, 현재 상태가 0원인 상태이므로 돈이 부족하여 nomoney신호가 출력됨.
+		nomoney <='1';coffee_out <='0'; tea_out <=‘0’; m <=m0;
+elsif(button_return_money='0' and button_coffee='0'and button_tea =‘1’) then	--티를 누르는 신호가 입력됐지만, 현재 상태가 0원인 상태이므로 돈이 부족하여 nomoney신호가 출력됨.
+		nomoney <='1';coffee_out <='0'; tea_out <=‘0’; m <=m0;
+					 else						--리셋신호가 1일때, 모든 돈이 반환 되지만 m0상태에서는 반환 안됨.
+	m <= m0;	coin_out_50 <='0';coin_out_100 <='0';
+       coin_out_500 <='0';coffee_out <= '0';tea_out <= '0';
+					end if;		
+							
+when m50 =>
+ coffee_out <= '0'; tea_out<=‘0’;								
+--커피 신호는 한번만 나와야 하기 때문에 모든 상태마다 이 문장을 적어줍니다. 
+		 nomoney <='0';
+ if(button_return_money='0' and button_coffee='0' and tea_out<=’0’) then	
+		if(in_50won ='1')    then
+			m <= m100; coin_out_50 <='0'; 
+	elsif(in_100won ='1')then	                                                        --마찬가지로, 50원 100원 500원 각각의 입력에 따라 상태를 이동합니다.  
+		m <= m150; coin_out_100 <='0';
+		elsif(in_500won ='1')then
+			m <= m550; coin_out_500 <='0';
+			else 	
+	m <= m50; coin_out_50 <='0'; coin_out_100 <='0'; coin_out_500 <='0';
+		end if;	
+elsif(button_return_money='0'and button_coffee='1'and button_tea = ‘0’)
+then                                               
+-- 마찬가지로 현재 상태가 m50이므로 커피를 뽑기에는 돈이 부족하여 nomoney가 출력됩니다.
+	nomoney <= '1'; m <= m50;
+elsif(button_return_money='0'and button_coffee='0'and button_tea = ‘1’)
+then                                               
+-- 마찬가지로 현재 상태가 m50이므로 커피를 뽑기에는 돈이 부족하여 nomoney가 출력됩니다.
+	nomoney <= '1'; m <= m50;
+	 else										 --리셋입력을 받으면 현재 돈을 모두 리셋한 후 0상태으로 가야합니다. 저는 이를
+m <= m0;	coin_out_50 <='1';coin_out_100 <='0';coin_out_500 <='0';
+coffee_out <= '0'; tea_out<=’0’ --50원 100원 500원의 아웃풋과, 상태 이동으로 구현했습니다. 
+		end if;									 --셋 중에 가능한 가장 큰 동전의 액수를 반환하고 차액은 상태이동을 통해 구현했습니다.
+     --예를 들어 550원인 상태에서 반환버튼을 누르면 500원을 출력하고, m50상태로 이동합니다.
+ when m100=>                                                                                    
+ -- m50상태로 이동하면 역시 여전히 리셋신호가 1이기 때문에 50원을 출력하고 m0상태로 갑니다. 
+		 coffee_out <= '0';nomoney <='0'; tea_out<=’0’;
+ if(button_return_money='0' and button_coffee='0' and button_tea =’1’) then
+		coffee_out<=’0’;nomoney<=’0’;tea_out<=’0’;m<=m0;
+ elsif(button_return_money='0' and button_coffee='0' and button_tea =’0’) then	
+		if(in_50won ='1')    then
+		m <= m150; coin_out_50 <='0';
+		elsif(in_100won ='1')then	
+		m <= m200; coin_out_100 <='0';
+		elsif(in_500won ='1')then
+		m <= m600; coin_out_500 <='0';
+		else 	
+	m <= m100;	coin_out_50 <='0';coin_out_100 <='0';coin_out_500 <='0';
+		end if;
+elsif(button_return_money='0' and button_coffee='1'and button_tea=’0’) then
+	nomoney <= '1'; m <= m100; coffee_out <= '0'; tea_out<=’0’;
+					 else
+m <= m0;	coin_out_50 <='0';coin_out_100 <='1';coin_out_500 <='0';coffee_out <= '0';tea_out<=’0’;
+					end if;
+
+	when m150 =>
+	coffee_out <= '0';nomoney <='0';
+ if(button_return_money='0' and button_coffee='0' and button_tea=’0’)	then
+	if(in_50won ='1')    then
+	m <= m200; coin_out_50 <='0';
+	elsif(in_100won ='1')then	
+    m <= m250; coin_out_100 <='0';
+	elsif(in_500won ='1')then
+   m <= m650; coin_out_500 <='0';
+        else 	
+   m <= m150;	coin_out_50 <='0';coin_out_100 <='0';coin_out_500 <='0';
+       end if;
+elsif(button_return_money='0' and button_coffee='1';button_tea=’0’;) then
+nomoney <= '0'; m <= m0; coffee_out <= '1';button_tea=‘0’;				--150원 이상일 때 부터 커피가 나오고, 남은 잔액에 해당되는 상태로 이동합니다.
+elsif(button_return_money='0' and button_coffee='0';button_tea=’1’;) then
+nomoney <= '0'; m <= m50; coffee_out <= '0';button_tea=‘1’;	
+ else
+m <= m0;coin_out_50 <='1';coin_out_100 <='1';coin_out_500 <='0';coffee_out <= '0';tea_out<=’0’;
+end if;	
+							
+when m200 =>
+coffee_out <= '0';nomoney <='0';tea_out<=’0’;
+ if(button_return_money ='0' and button_coffee ='0'and tea_out<=’0’) then
+   if(in_50won ='1')    then
+	m <= m250;coin_out_50 <='0';
+	elsif(in_100won ='1')then	
+	m <= m300;coin_out_100 <='0';
+	elsif(in_500won ='1')then
+	m <= m700;coin_out_500 <='0';							
+
+	
+	else 	
+m <= m200;	coin_out_50 <='0';coin_out_100 <='0';coin_out_500 <='0';
+end if;
+elsif(button_return_money='0' and button_coffee='1' and button_tea=’0’) then
+	  coffee_out <= '1'; m <= m50; tea_out<=’0’;
+elsif(button_return_money='0' and button_coffee='0' and button_tea=’1’) then
+	  coffee_out <= '0'; m <= m100; tea_out<=’1’;
+	 else
+m <= m50;	coin_out_50 <='1';coin_out_100 <='1';coin_out_500 <='0';coffee_out <= '0';tea_out<=’0’;
+					end if;		
+
+when m250 =>
+coffee_out <= '0';nomoney <='0'; tea_out<=’0’;
+ if(button_return_money='0' and button_coffee='0' and button_tea=’0’) then	
+if(in_50won ='1')    then
+m <= m300;coin_out_50 <='0';
+elsif(in_100won ='1')then	
+m <= m350;coin_out_100 <='0';
+elsif(in_500won ='1')then                                                    
+--최종 허용 금액이 700원이므로, 500원을 다시 반환하고 250원 상태로 돌아갑니다.
+m <= m250;
+coin_out_500 <='1';
+else 	
+m <= m250;	coin_out_50 <='0';coin_out_100 <='0';coin_out_500 <='0';
+						end if;	
+elsif(button_return_money='0' and button_coffee='1' and button_tea=’0’) then
+ coffee_out <= '1'; m <= m100; tea_out<=’0’;
+elsif(button_return_money='0' and button_coffee='0' and button_tea=’1’) then
+coffee_out <= '0'; m <= m150; tea_out<=’1’;
+ else
+m <= m100;	coin_out_50 <='1';coin_out_100 <='1';coin_out_500 <='0';coffee_out <= '0';
+	end if;	
+	when m300 =>
+	coffee_out <= '0';nomoney <='0'; tea_out<=’0’;
+ if(button_return_money='0' and button_coffee='0' and button_tea=’0’) then
+if(in_50won ='1')    then
+m <= m350;coin_out_50 <='0';
+	elsif(in_100won ='1')then	
+m <= m400;coin_out_100 <='0';
+elsif(in_500won ='1')then      
+    --최종 허용 금액이 750원이므로, 500원을 다시 반환하고 300원의 상태로 돌아갑니다. 
+m <= m300;
+coin_out_500 <='1';
+else 	
+m <= m300;	coin_out_50 <='0';coin_out_100 <='0';coin_out_500 <='0';coffee_out <= '0'; tea_out<=’0’;
+end if;
+elsif(button_return_money='0' and button_coffee='1' and button_tea=’0’) then
+ coffee_out <= '1'; m <= m150; tea_out<=’0’;
+elsif(button_return_money='0' and button_coffee='0' and button_tea=’1’) then
+coffee_out <= '0'; m <= m200; tea_out<=’1’;
+ else
+m <= m150;	coin_out_50 <='1'; coin_out_100 <='1';coin_out_500 <='0';coffee_out <= '0';tea_out<=’0’;
+end if;		
+when m350 =>
+coffee_out <= '0';nomoney <='0';tea_out<=’0’;
+if(button_return_money='0' and button_coffee='0' and button_tea=’0’) then
+		if(in_50won ='1')    then
+	m <= m400;coin_out_50 <='0';
+	elsif(in_100won ='1')then	
+	m <= m450;coin_out_100 <='0';
+elsif(in_500won ='1')then
+m <= m350;
+coin_out_500 <='1';
+else 	
+m <= m350;	coin_out_50 <='0';coin_out_100 <='0';coin_out_500 <='0';coffee_out <= '0';tea_out<=’0’;
+end if;
+elsif(button_return_money='0' and button_coffee='1' and button_tea=’0’) then
+ coffee_out <= '1'; m <= m200; tea_out<=’0’;
+elsif(button_return_money='0' and button_coffee='0' and button_tea=’1’) then
+coffee_out <= '0'; m <= m250; tea_out<=’1’;
+ else
+m <= m200;	coin_out_50 <='1';coin_out_100 <='1';coin_out_500 <='0';coffee_out <= '0';tea_out<=’0’;
+end if;	
+							
+when m400 =>
+coffee_out <= '0';nomoney <='0'; tea_out<=’0’;
+if(button_return_money='0' and button_coffee='0' and button_tea=’0’) then	
+if(in_50won ='1')    then
+m <= m450;coin_out_50 <='0';
+elsif(in_100won ='1')then	
+m <= m500;coin_out_100 <='0';
+elsif(in_500won ='1')then
+coin_out_500 <='1';
+m <= m400;
+else 	
+m <= m400;	coin_out_50 <='0';coin_out_100 <='0';coin_out_500 <='0';
+end if;
+elsif(button_return_money='0' and button_coffee='1' and button_tea=’0’) then
+coffee_out <= '1'; m <=m250;tea_out<=’0’;
+elsif(button_return_money='0' and button_coffee='0' and button_tea=’1’) then
+coffee_out <= '0'; m <=m300;tea_out<=’1’;
+ else
+m <= m250;	coin_out_50 <='1';coin_out_100 <='1';coin_out_500 <='0';coffee_out <= '0';
+end if;		
+						
+when m450 =>
+coffee_out <= '0';nomoney <='0';tea_out<=’0’;
+ if(button_return_money='0' and button_coffee='0' and button_tea=’0’) then	
+	if(in_50won ='1')    then
+	m <= m500;coin_out_50 <='0';
+	elsif(in_100won ='1')then	
+	m <= m550;coin_out_100 <='0';
+elsif(in_500won ='1')then
+m <= m450;
+coin_out_500 <='1';	
+else 	
+m <= m450;	coin_out_50 <='0';coin_out_100 <='0';coin_out_500 <='0';
+end if;
+elsif(button_return_money='0' and button_coffee='1' and button_tea=’0’) then
+coffee_out <= '1'; m <=m300;tea_out<=’0’;
+elsif(button_return_money='0' and button_coffee='0' and button_tea=’1’) then
+coffee_out <= '0'; m <=m350;tea_out<=’1’;
+ else
+m <= m300;	coin_out_50 <='1';coin_out_100 <='1';coin_out_500 <='0';coffee_out <= '0';
+end if;		
+							
+when m500 =>
+coffee_out <='0';nomoney <='0';tea_out<=’0’;
+if(button_return_money='0' and button_coffee='0' and button_tea=’0’) then	
+	if(in_50won ='1')    then
+m <= m550;coin_out_50 <='0';
+elsif(in_100won ='1')then	
+m <= m600;coin_out_100 <='0';
+elsif(in_500won ='1')then
+m <= m500;
+coin_out_500 <= '1';	
+else 	
+m <= m500;	coin_out_50 <='0';coin_out_100 <='0';coin_out_500 <='0';
+end if;
+elsif(button_return_money='0' and button_coffee='1' and button_tea=’0’) then
+coffee_out <= '1'; m <=m350;tea_out<=’0’;
+elsif(button_return_money='0' and button_coffee='0' and button_tea=’1’) then
+coffee_out <= '0'; m <=m400;tea_out<=’1’;
+ else
+m <= m0;	coin_out_50 <='0';coin_out_100 <='0';coin_out_500 <='1';coffee_out <= '0';
+end if;		
+
+when m550 =>
+coffee_out <='0';nomoney <='0';tea_out<=’0’;
+if(button_return_money='0' and button_coffee='0' and button_tea=’0’) then
+if(in_50won ='1')    then
+m <= m600;coin_out_50 <='0';
+elsif(in_100won ='1')then	
+m <= m650;coin_out_100 <='0';
+elsif(in_500won ='1')then
+m <= m550;
+coin_out_500 <='1';	
+else 	
+m <= m550;	coin_out_50 <='0';coin_out_100 <='0';coin_out_500 <='0';
+end if;
+elsif(button_return_money='0' and button_coffee='1' and button_tea=’0’) then
+coffee_out <= '1'; m <=m400;tea_out<=’0’;
+elsif(button_return_money='0' and button_coffee='0' and button_tea=’1’) then
+coffee_out <= '0'; m <=m450;tea_out<=’1’;
+else
+m <= m0;	coin_out_50 <='1';coin_out_100 <='0';coin_out_500 <='1';coffee_out <= '0';tea_out<=’0’;
+end if;			
+
+when m600 =>
+	coffee_out <='0';nomoney <='0';tea_out<=’0’;
+if(button_return_money='0' and button_coffee='0' and button_tea=’0’) then
+	if(in_50won ='1')    then
+	m <= m650;coin_out_50 <='0';
+	elsif(in_100won ='1')then	
+	m <= m700;
+	coin_out_100 <='0';
+	elsif(in_500won ='1')then
+	m <= m600;
+	coin_out_500 <='1';
+	else 	
+m <= m600;	coin_out_50 <='0';coin_out_100 <='0';coin_out_500 <='0';
+						end if;
+ elsif(button_return_money='0' and button_coffee='1' and button_tea=’0’) then
+coffee_out <= '1'; m <=m450;tea_out<=’0’;
+elsif(button_return_money='0' and button_coffee='0' and button_tea=’1’) then
+coffee_out <= '0'; m <=m500;tea_out<=’1’;
+ else
+m <= m0;	coin_out_50 <='0';coin_out_100 <='1';coin_out_500 <='1';coffee_out <= '0';tea_out<=’0’;
+end if;			
+when m650 =>
+coffee_out <='0';nomoney <='0';tea_out<=’0’;
+if(button_return_money='0' and button_coffee='0' and button_tea=’0’) then
+if(in_50won ='1')    then
+m <= m700;
+coin_out_50 <='0';
+elsif(in_100won ='1')then	
+m <= m650;
+coin_out_100<='1';
+elsif(in_500won ='1')then
+m <= m650; 
+coin_out_500 <='1';
+else 	
+m <= m650;	coin_out_50 <='0';coin_out_100 <='0';coin_out_500 <='0';
+end if;
+elsif(button_return_money='0' and button_coffee='1' and button_tea=’0’) then
+coffee_out <= '1'; m <=m500;tea_out<=’0’;
+elsif(button_return_money='0' and button_coffee='0' and button_tea=’1’) then
+coffee_out <= '0'; m <=m550;tea_out<=’1’;
+ else
+m <= m0;coin_out_50 <='1';coin_out_100 <='1';coin_out_500 <='1';coffee_out <= '0';
+tea_out<=’0’;
+end if;	
+
+when m700 =>
+coffee_out <= '0';nomoney <='0';
+if(button_return_money='0' and button_coffee='0' and button_tea=’0’) then
+if(in_50won ='1')    then
+m <= m700; 
+coin_out_50 <='1';
+elsif(in_100won ='1')then	
+m <= m700; 
+coin_out_100 <='1';
+elsif(in_500won ='1')then
+m <= m700;
+coin_out_500 <='1';
+else 	
+m <= m700;	coin_out_50 <='0';coin_out_100 <='0';coin_out_500 <='0';coffee_out <= '0';
+elsif(button_return_money='0' and button_coffee='1' and button_tea=’0’) then
+coffee_out <= '1'; m <=m550;tea_out<=’0’;
+elsif(button_return_money='0' and button_coffee='0' and button_tea=’1’) then
+coffee_out <= '0'; m <=m600;tea_out<=’1’;
+ else
+m <= m50;	coin_out_50 <='0'; coin_out_100 <='1';coin_out_500 <='1';coffee_out <= '0';tea_out<=’0’;
+					end if;
+
+
+	end case; 
+end if;
+end process;
+
+end Behavioral;
