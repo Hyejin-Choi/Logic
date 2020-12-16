@@ -14,18 +14,31 @@ VHDL을 이용해 final project를 진행했던 과정입니다.
 **프로그램 분석**
 
 #### 1. INPUT과 OUTPUT signal 분석
+
 <input>
+
 in_50won,in_100won,in_500won : 동전입력signal( 자판기에 투입되는 동전을 의미)
+
 button_coffee: 커피 출력 버튼(자판기에 커피를 출력하라는 명령을 전달)
+
 button_tea: tea 출력 버튼(자판기에 tea를 출력하라는 명령을 전달)
+
 clk : 상태머신의 입/출력의 반응주기 (클락 주기 signal) . 상승엣지(rising edge)에 반응하도록 설정  
+
 button_return_money : 동전 반환 버튼 (자판기에 잔액 반환signal 전달)
+
 button_reset : 리셋 버튼( 자판기에 들어있는 모든 돈을 반환 없이 리셋하라는 신호 전달)
+
 <output>
+  
 coffee_out : 커피 출력신호에 의한 실제 커피출력 
+
 tea_out : tea 출력시그널에 의한 실제 tea출력
+
 nomoney : 커피나 tea 버튼을 눌렀지만 자판기 현재 상태에 돈이 부족해서 커피나 티를 뽑을수 없다는 signal
+
 coin_out_50,coin_out_100,coin_out_500 : 반환된 동전 출력에 대한 신호
+
 
 
 #### 2. architecture 코드분석 – state 분석
